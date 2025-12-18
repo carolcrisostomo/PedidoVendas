@@ -1,0 +1,29 @@
+unit uClienteController;
+
+interface
+
+uses
+  FireDAC.Comp.Client, uCliente, uClienteDAO;
+
+type
+  TClienteController = class
+  private
+    FConn: TFDConnection;
+  public
+    constructor Create(AConn: TFDConnection);
+    function BuscarCliente(ACodigo: Integer): TCliente;
+  end;
+
+implementation
+
+constructor TClienteController.Create(AConn: TFDConnection);
+begin
+  FConn := AConn;
+end;
+
+function TClienteController.BuscarCliente(ACodigo: Integer): TCliente;
+begin
+  Result := TClienteDAO.BuscarPorCodigo(FConn, ACodigo);
+end;
+
+end.

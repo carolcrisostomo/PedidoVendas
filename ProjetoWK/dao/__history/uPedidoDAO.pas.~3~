@@ -1,0 +1,34 @@
+unit uPedidoDAO;
+
+interface
+
+uses
+  FireDAC.Comp.Client,uPedido;
+
+type
+  TPedidoDAO=class
+  public
+    class procedure GravarPedido(Conn:TFDConnection;APedido:TPedido);
+  end;
+
+implementation
+
+class procedure TPedidoDAO.GravarPedido(Conn:TFDConnection;APedido:TPedido);
+var
+  Q:TFDQuery;
+begin
+  Q:=TFDQuery.Create(nil);
+  try
+    Q.Connection:=Conn;
+    Q.SQL.Text:='INSERT INTO PEDIDOS(NUMERO_PEDIDO,DATA_EMISSAO,CODIGO_CLIENTE,VALOR_TOTAL) VALUES(:N,:D,:C,:V)';
+    Q.ParamByName('N').AsInteger:=APedido.Numero;
+    Q.ParamByName('D').AsDateTime:=APedido.Data;
+    Q.ParamByName('C').AsInteger:=APedido.CodigoCliente;
+    Q.ParamByName('V').AsCurrency:=APedido.ValorTotal;
+    Q.ExecSQL;
+  finally
+    Q.Free;
+  end;
+end;
+
+end.

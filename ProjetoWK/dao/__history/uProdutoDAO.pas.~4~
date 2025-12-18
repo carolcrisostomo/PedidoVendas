@@ -1,0 +1,35 @@
+unit uProdutoDAO;
+
+interface
+
+uses
+  FireDAC.Comp.Client,uProduto;
+
+type
+  TProdutoDAO=class
+  public
+    class function BuscarPorCodigo(Conn:TFDConnection;ACodigo:Integer):TProduto;
+  end;
+
+implementation
+class function TProdutoDAO.BuscarPorCodigo(Conn:TFDConnection;ACodigo:Integer):TProduto;
+var
+  Q:TFDQuery;
+begin Result:=nil;
+  Q:=TFDQuery.Create(nil);
+  try
+    Q.Connection:=Conn;Q.SQL.Text:='SELECT CODIGO,DESCRICAO,PRECO_VENDA FROM PRODUTOS WHERE CODIGO=:CODIGO';
+    Q.ParamByName('CODIGO').AsInteger:=ACodigo;Q.Open;
+    if not Q.IsEmpty then
+    begin
+      Result:=TProduto.Create;
+      Result.Codigo:=Q.FieldByName('CODIGO').AsInteger;
+      Result.Descricao:=Q.FieldByName('DESCRICAO').AsString;
+      Result.Valor:=Q.FieldByName('PRECO_VENDA').AsCurrency;
+    end;
+  finally
+    Q.Free;
+  end;
+end;
+
+end.

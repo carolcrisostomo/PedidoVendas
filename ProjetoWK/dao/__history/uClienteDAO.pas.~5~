@@ -1,0 +1,78 @@
+unit uClienteDAO;
+
+interface
+
+uses
+  FireDAC.Comp.Client, uCliente, System.Generics.Collections;
+
+type
+  TClienteDAO = class
+  public
+    class function BuscarPorCodigo(Conn: TFDConnection; ACodigo: Integer): TCliente;
+    class function Listar(Conn: TFDConnection; const AFiltro: string): TObjectList<TCliente>;
+  end;
+
+implementation
+
+class function TClienteDAO.BuscarPorCodigo(Conn: TFDConnection; ACodigo: Integer): TCliente;
+var
+  Q: TFDQuery;
+begin
+  Result := nil;
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := Conn;
+    Q.SQL.Text := 'SELECT CODIGO, NOME, CIDADE, UF FROM CLIENTES WHERE CODIGO = :CODIGO';
+    Q.ParamByName('CODIGO').AsInteger := ACodigo;
+    Q.Open;
+
+    if not Q.IsEmpty then
+    begin
+      Result := TCliente.Create;
+      Result.Codigo := Q.FieldByName('CODIGO').AsInteger;
+      Result.Nome := Q.FieldByName('NOME').AsString;
+      Result.Cidade := Q.FieldByName('CIDADE').AsString;
+      Result.UF := Q.FieldByName('UF').AsString;
+    end;
+  finally
+    Q.Free;
+  end;
+end;
+
+class function TClienteDAO.Listar(Conn: TFDConnection;
+  const AFiltro: string): TObjectList<TCliente>;
+var
+  Q: TFDQuery;
+  Cli: TCliente;
+begin
+  Result := TObjectList<TCliente>.Create(True);
+
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := Conn;
+    Q.SQL.Text :=
+      'SELECT CODIGO, NOME, CIDADE, UF ' +
+      'FROM CLIENTES ' +
+      'WHERE NOME LIKE :FILTRO ' +
+      'ORDER BY NOME';
+
+    Q.ParamByName('FILTRO').AsString := '%' + AFiltro + '%';
+    Q.Open;
+
+    while not Q.Eof do
+    begin
+      Cli := TCliente.Create;
+      Cli.Codigo := Q.FieldByName('CODIGO').AsInteger;
+      Cli.Nome   := Q.FieldByName('NOME').AsString;
+      Cli.Cidade := Q.FieldByName('CIDADE').AsString;
+      Cli.UF     := Q.FieldByName('UF').AsString;
+
+      Result.Add(Cli);
+      Q.Next;
+    end;
+  finally
+    Q.Free;
+  end;
+end;
+
+end.

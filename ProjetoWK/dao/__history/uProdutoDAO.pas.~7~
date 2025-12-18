@@ -1,0 +1,75 @@
+unit uProdutoDAO;
+
+interface
+
+uses
+  FireDAC.Comp.Client, uProduto, System.Generics.Collections;
+
+type
+  TProdutoDAO=class
+  public
+    class function BuscarPorCodigo(Conn:TFDConnection;ACodigo:Integer):TProduto;
+    class function Listar( Conn: TFDConnection; const AFiltro: string): TObjectList<TProduto>;
+  end;
+
+implementation
+
+class function TProdutoDAO.BuscarPorCodigo(Conn:TFDConnection;ACodigo:Integer):TProduto;
+var
+  Q:TFDQuery;
+begin Result:=nil;
+  Q:=TFDQuery.Create(nil);
+  try
+    Q.Connection:=Conn;
+    Q.SQL.Text:='SELECT CODIGO,DESCRICAO,PRECO_VENDA FROM PRODUTOS WHERE CODIGO=:CODIGO';
+    Q.ParamByName('CODIGO').AsInteger:=ACodigo;
+    Q.Open;
+    if not Q.IsEmpty then
+    begin
+      Result:=TProduto.Create;
+      Result.Codigo:=Q.FieldByName('CODIGO').AsInteger;
+      Result.Descricao:=Q.FieldByName('DESCRICAO').AsString;
+      Result.Valor:=Q.FieldByName('PRECO_VENDA').AsCurrency;
+    end;
+  finally
+    Q.Free;
+  end;
+end;
+
+class function TProdutoDAO.Listar(Conn: TFDConnection;
+  const AFiltro: string): TObjectList<TProduto>;
+var
+  Q: TFDQuery;
+  Prod: TProduto;
+begin
+  Result := TObjectList<TProduto>.Create(True);
+
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := Conn;
+    Q.SQL.Text :=
+      'SELECT CODIGO, DESCRICAO, VALOR ' +
+      'FROM PRODUTOS ' +
+      'WHERE DESCRICAO LIKE :FILTRO ' +
+      'ORDER BY DESCRICAO';
+
+    Q.ParamByName('FILTRO').AsString := '%' + AFiltro + '%';
+    Q.Open;
+
+    while not Q.Eof do
+    begin
+      Prod := TProduto.Create;
+      Prod.Codigo := Q.FieldByName('CODIGO').AsInteger;
+      Prod.Descricao := Q.FieldByName('DESCRICAO').AsString;
+      Prod.Valor := Q.FieldByName('VALOR').AsCurrency;
+
+      Result.Add(Prod);
+      Q.Next;
+    end;
+  finally
+    Q.Free;
+  end;
+
+end;
+
+end.

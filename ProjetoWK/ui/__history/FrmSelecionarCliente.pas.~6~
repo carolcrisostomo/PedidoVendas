@@ -1,0 +1,99 @@
+﻿unit FrmSelecionarCliente;
+
+interface
+
+uses
+  System.SysUtils, System.Classes, Vcl.Forms, Vcl.StdCtrls, Vcl.Grids,
+  System.Generics.Collections, FireDAC.Comp.Client, uUtilidades,
+  uCliente, uClienteController, Vcl.Controls;
+
+type
+  TFormSelecionarCliente = class(TForm)
+    EdtBuscar: TEdit;
+    Grid: TStringGrid;
+    BtnSelecionar: TButton;
+    BtnCancelar: TButton;
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure EdtBuscarChange(Sender: TObject);
+    procedure BtnSelecionarClick(Sender: TObject);
+    procedure GridDblClick(Sender: TObject);
+  private
+    FController: TClienteController;
+    FClientes: TObjectList<TCliente>;
+    FClienteSelecionado: TCliente;
+    Conn: TFDConnection;
+    FUtilidades: TUtilidades;
+    procedure ConfigurarGrid;
+    procedure CarregarClientes(const AFiltro: string = '');
+  public
+    property ClienteSelecionado: TCliente read FClienteSelecionado;
+  end;
+
+implementation
+
+{$R *.dfm}
+
+uses Conexao, FrmPedido;
+
+procedure TFormSelecionarCliente.FormCreate(Sender: TObject);
+begin
+  FUtilidades:= TUtilidades.Create();
+  FUtilidades.AplicarArredondamento(self,10);
+  Conn := CriarConexao;
+  Conn.Connected := True;
+  FController := TClienteController.Create(Conn);
+  FClientes := TObjectList<TCliente>.Create(True);
+  ConfigurarGrid;
+  CarregarClientes;
+end;
+
+procedure TFormSelecionarCliente.FormDestroy(Sender: TObject);
+begin
+  FClientes.Free;
+  FController.Free;
+end;
+
+procedure TFormSelecionarCliente.ConfigurarGrid;
+begin
+  Grid.ColCount := 4;
+  Grid.FixedRows := 1;
+  Grid.Cells[0,0] := 'Código';
+  Grid.Cells[1,0] := 'Nome';
+  Grid.Cells[2,0] := 'Cidade';
+  Grid.Cells[3,0] := 'UF';
+end;
+
+procedure TFormSelecionarCliente.CarregarClientes(const AFiltro: string);
+var I: Integer;
+begin
+  FClientes.Clear;
+  FClientes.AddRange(FController.Listar(AFiltro));
+  Grid.RowCount := FClientes.Count + 1;
+  for I := 0 to FClientes.Count - 1 do
+  begin
+    Grid.Cells[0, I+1] := FClientes[I].Codigo.ToString;
+    Grid.Cells[1, I+1] := FClientes[I].Nome;
+    Grid.Cells[2, I+1] := FClientes[I].Cidade;
+    Grid.Cells[3, I+1] := FClientes[I].UF;
+  end;
+end;
+
+procedure TFormSelecionarCliente.EdtBuscarChange(Sender: TObject);
+begin
+  CarregarClientes(EdtBuscar.Text);
+end;
+
+procedure TFormSelecionarCliente.BtnSelecionarClick(Sender: TObject);
+begin
+  if Grid.Row <= 0 then Exit;
+  FClienteSelecionado := FClientes[Grid.Row - 1];
+  ModalResult := mrOk;
+end;
+
+procedure TFormSelecionarCliente.GridDblClick(Sender: TObject);
+begin
+  BtnSelecionarClick(Sender);
+end;
+
+end.

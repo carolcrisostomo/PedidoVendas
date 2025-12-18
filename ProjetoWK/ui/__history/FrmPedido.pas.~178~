@@ -1,0 +1,593 @@
+﻿unit FrmPedido;
+
+interface
+
+uses
+  Vcl.Forms, Vcl.StdCtrls, Vcl.Grids, System.Generics.Collections, System.UITypes,
+  PedidoService, PedidoRepository, Conexao, FireDAC.Comp.Client, uPedido,
+  SysUtils, Dialogs, Windows, Vcl.Controls, System.Classes, uCliente, uClienteController,
+  uPedidoItem,  uProdutoController, uProduto, Vcl.ExtCtrls,
+  Vcl.WinXPanels, Vcl.Imaging.pngimage, Vcl.Buttons, uUtilidades, FrmSelecionarProduto;
+
+type TModoItemPedido = (mpInserindo, mpEditando);
+
+type
+  TFormPedido = class(TForm)
+    StackPanel4: TStackPanel;
+    Grid: TStringGrid;
+    CardPanel1: TCardPanel;
+    Card1: TCard;
+    Label1: TLabel;
+    EdtCliente: TEdit;
+    EdtNomeCliente: TEdit;
+    Label5: TLabel;
+    EdtCidade: TEdit;
+    UF: TLabel;
+    EdtUF: TEdit;
+    BtnSelecionarCliente: TBitBtn;
+    Image2: TImage;
+    CardPanel2: TCardPanel;
+    Card2: TCard;
+    Image3: TImage;
+    Label2: TLabel;
+    EdtProd: TEdit;
+    EdtNomeProd: TEdit;
+    Label4: TLabel;
+    EdtValorUnit: TEdit;
+    Label3: TLabel;
+    EdtQtde: TEdit;
+    BtnAdd: TButton;
+    BtnSelecionarProduto: TBitBtn;
+    CardPanel4: TCardPanel;
+    Card4: TCard;
+    Image4: TImage;
+    Button1: TButton;
+    Label8: TLabel;
+    lblAndamentoPedido: TLabel;
+    Shape1: TShape;
+    CardPanel3: TCardPanel;
+    Card3: TCard;
+    Label7: TLabel;
+    StackPanel1: TStackPanel;
+    BtnNovoPedido: TButton;
+    BtnCarregarPedido: TButton;
+    LblTotal: TLabel;
+    BtnGravar: TButton;
+    btnCancelar: TButton;
+    procedure FormCreate(Sender: TObject);
+    procedure BtnAddClick(Sender: TObject);
+    procedure BtnGravarClick(Sender: TObject);
+    procedure BtnCarregarClick(Sender: TObject);
+    procedure BtnCancelarClick(Sender: TObject);
+    procedure GridKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure EdtClienteExit(Sender: TObject);
+    procedure AtualizarGrid;
+    procedure CarregarItemParaCampos(Index: Integer);
+    procedure AtualizarTotal;
+    procedure LimparCamposCliente;
+    procedure LimparCamposProduto;
+    procedure EdtProdExit(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+    procedure BtnCarregarPedidoClick(Sender: TObject);
+    procedure Button10Click(Sender: TObject);
+    procedure BtnSelecionarProdutoClick(Sender: TObject);
+    procedure BtnSelecionarClienteClick(Sender: TObject);
+    procedure EdtClienteKeyPress(Sender: TObject; var Key: Char);
+    procedure EdtProdKeyPress(Sender: TObject; var Key: Char);
+    procedure EdtNomeClienteKeyPress(Sender: TObject; var Key: Char);
+    procedure EdtQtdeKeyPress(Sender: TObject; var Key: Char);
+    procedure FormShow(Sender: TObject);
+    procedure FormResize(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure BtnNovoPedidoClick(Sender: TObject);
+    procedure EdtClienteChange(Sender: TObject);
+  private
+    Items: TObjectList<TPedidoItem>;
+    Service: TPedidoService;
+    Conn: TFDConnection;
+    QCab, QItens: TFDQuery;
+    FClienteController: TClienteController;
+    FProdutoController: TProdutoController;
+    FClienteAtual: TCliente;
+    FProduto: TProduto;
+    FItens: TObjectList<TPedidoItem>;
+    FPedido: TPedido;
+    FUtilidades: TUtilidades;
+    FModoEdicao: TModoItemPedido;
+    procedure AtualizaGrid;
+    procedure PermitirApenasNumero(var Key: Char);
+    procedure AjustarColunas(Grid: TStringGrid);
+  end;
+
+
+var FormPedido: TFormPedido;
+
+implementation
+
+{$R *.dfm}
+
+uses FrmSelecionarCliente, Database, FrmSelecionarPedido;
+
+procedure TFormPedido.FormCreate(Sender: TObject);
+begin
+  Items := TObjectList<TPedidoItem>.Create(True);
+
+  Conn := DBConnection;
+
+  QCab := TFDQuery.Create(nil);
+  QCab.Connection := Conn;
+
+  QItens := TFDQuery.Create(nil);
+  QItens.Connection := Conn;
+
+  FClienteController := TClienteController.Create(Conn);
+  FProdutoController := TProdutoController.Create(Conn);
+
+  Service := TPedidoService.Create(TPedidoRepository.Create(Conn));
+
+  FUtilidades:= TUtilidades.Create();
+  FUtilidades.AplicarArredondamento(self,10);
+
+  FItens := TObjectList<TPedidoItem>.Create(True);
+  FModoEdicao:= mpInserindo;
+  FPedido := TPedido.Create;
+
+  Grid.ColCount := 5;
+  Grid.Cells[0,0] := 'Cod';
+  Grid.Cells[1,0] := 'Descrição';
+  Grid.Cells[2,0] := 'Qtde';
+  Grid.Cells[3,0] := 'Unit';
+  Grid.Cells[4,0] := 'Total';
+
+  var Total:= 0;
+  LblTotal.Caption := 'Total: R$ ' + FormatCurr('0.00', Total);
+end;
+
+procedure TFormPedido.FormDestroy(Sender: TObject);
+begin
+  FUtilidades.Free;
+end;
+
+procedure TFormPedido.FormResize(Sender: TObject);
+begin
+  AjustarColunas(Grid);
+end;
+
+procedure TFormPedido.FormShow(Sender: TObject);
+begin
+  AjustarColunas(Grid);
+end;
+
+procedure TFormPedido.AjustarColunas(Grid: TStringGrid);
+begin
+  var LarguraDisponivel := Grid.ClientWidth;
+
+  Grid.ColWidths[0] := 80;
+  Grid.ColWidths[2] := 80;
+  Grid.ColWidths[3] := 100;
+  Grid.ColWidths[4] := 100;
+  Grid.ColWidths[1] := LarguraDisponivel -
+                       Grid.ColWidths[0] -
+                       Grid.ColWidths[2] -
+                       Grid.ColWidths[3] -
+                       Grid.ColWidths[4] ;
+end;
+
+procedure TFormPedido.BtnSelecionarClienteClick(Sender: TObject);
+begin
+  var Frm := TFormSelecionarCliente.Create(nil);
+  try
+    if Frm.ShowModal = mrOk then
+    begin
+      EdtCliente.Text := Frm.ClienteSelecionado.Codigo.ToString;
+      EdtNomeCliente.Text := Frm.ClienteSelecionado.Nome;
+      EdtCidade.Text := Frm.ClienteSelecionado.Cidade;
+      EdtUF.Text := Frm.ClienteSelecionado.UF;
+    end;
+  finally
+    Frm.Free;
+  end;
+end;
+
+procedure TFormPedido.BtnSelecionarProdutoClick(Sender: TObject);
+begin
+  var Frm := TFormSelecionarProduto.Create(nil);
+  try
+    if Frm.ShowModal = mrOk then
+    begin
+      EdtProd.Text := Frm.ProdutoSelecionado.Codigo.ToString;
+      EdtNomeProd.Text := Frm.ProdutoSelecionado.Descricao;
+      EdtValorUnit.Text := CurrToStr(Frm.ProdutoSelecionado.Valor);
+    end;
+  finally
+    Frm.Free;
+  end;
+
+end;
+
+procedure TFormPedido.BtnAddClick(Sender: TObject);
+begin
+  if Trim(EdtQtde.Text) = ''  then
+  begin
+    ShowMessage('A quantidade deve ser informada!');
+    EdtQtde.SetFocus;
+    Exit;
+  end;
+
+  var Item:= TPedidoItem.Create;
+  var Linha := Grid.Row;
+
+  if FModoEdicao = mpEditando then
+  begin
+    Item := Items[Linha - 1];
+   // Items[Linha - 1].Id:= ;
+  end
+  else
+  begin
+    Item := TPedidoItem.Create;
+    Items.Add(Item);
+     Repaint;
+  end;
+
+  Item.CodigoProduto := StrToInt(EdtProd.Text);
+  Item.Quantidade    := StrToFloat(EdtQtde.Text);
+  Item.ValorUnitario := StrToFloat(EdtValorUnit.Text);
+  Item.RecalcularTotal;
+
+ // Grid.Row := 0;
+  AtualizaGrid;
+  LimparCamposProduto;
+
+  
+end;
+
+procedure TFormPedido.LimparCamposCliente;
+begin
+  EdtCliente.Clear;
+  EdtNomeCliente.Clear;
+  EdtCidade.Clear;
+  EdtUF.Clear;
+  EdtCliente.SetFocus;
+  FModoEdicao:= mpInserindo;
+  BtnAdd.Caption:= 'Adicionar Produto';
+  EdtCliente.SetFocus;
+  Repaint;
+end;
+
+procedure TFormPedido.LimparCamposProduto;
+begin
+  EdtProd.Clear;
+  EdtNomeProd.Clear;
+  EdtQtde.Clear;
+  EdtValorUnit.Clear;
+  EdtProd.SetFocus;
+  FModoEdicao:= mpInserindo;
+  BtnAdd.Caption:= 'Adicionar Produto';
+  EdtProd.SetFocus;
+  Grid.RowCount := 1;
+  Grid.RowCount := 5;
+  Items.Clear;
+  Repaint;
+end;
+
+
+procedure TFormPedido.PermitirApenasNumero(var Key: Char);
+begin
+  if CharInSet(Key, ['0'..'9', ',']) then
+    Exit;
+
+  if CharInSet(Key, [#13, #9, #8]) then
+    Exit;
+
+  Key := #0;
+end;
+
+procedure TFormPedido.AtualizarGrid;
+begin
+  Grid.RowCount := FItens.Count + 1;
+
+  for var i := 0 to FItens.Count - 1 do
+  begin
+    Grid.Cells[0, i+1] := FItens[i].CodigoProduto.ToString;
+    Grid.Cells[1, i+1] := EdtNomeProd.Text;
+    Grid.Cells[2, i+1] := FloatToStr(FItens[i].Quantidade);
+    Grid.Cells[3, i+1] := FormatFloat('0.00', FItens[i].ValorUnitario);
+    Grid.Cells[4, i+1] := FormatFloat('0.00', FItens[i].ValorTotal);
+  end;
+end;
+
+
+procedure TFormPedido.GridKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  var idx := Grid.Row - 1;
+
+  if Key = VK_RETURN then
+  begin
+    if idx >= 0 then
+    begin
+      EdtProd.Text := Items[idx].CodigoProduto.ToString;
+      EdtNomeProd.Text := FProdutoController.BuscarProduto(StrToInt(EdtProd.Text)).Descricao;
+      EdtQtde.Text := FloatToStr(Items[idx].Quantidade);
+      EdtValorUnit.Text := FormatFloat('0.00', Items[idx].ValorUnitario);
+      BtnAdd.Caption:='Atualizar Produto';
+      FModoEdicao:= mpEditando;
+    end;
+  end;
+
+  if Key = VK_DELETE then
+  begin
+    if idx >= 0 then
+      if MessageDlg('Excluir item?', mtConfirmation, [mbYes,mbNo], 0)=mrYes then
+      begin
+        Items.Delete(idx);
+        AtualizaGrid;
+      end;
+  end;
+
+end;
+
+
+procedure TFormPedido.AtualizarTotal;
+begin
+  for var i := 0 to FItens.Count - 1 do
+    LblTotal.Caption := FormatCurr('0.00', Service.CalcularTotal(FItens));
+end;
+
+procedure TFormPedido.CarregarItemParaCampos(Index: Integer);
+begin
+  var Item := FItens[Index];
+  EdtProd.Text := Item.CodigoProduto.ToString;
+  EdtQtde.Text := FloatToStr(Item.Quantidade);
+  EdtValorUnit.Text := FormatCurr('0.00', Item.ValorUnitario);
+end;
+
+procedure TFormPedido.BtnGravarClick(Sender: TObject);
+begin
+
+  FPedido.CodigoCliente := StrToInt(EdtCliente.Text);
+  FPedido.Data := Date;
+
+  ShowMessage('Pedido gravado: ' + Service.Gravar(FPedido, Items).ToString);
+  lblAndamentoPedido.Caption:='Pedido gravado: ' + Service.Gravar(FPedido, Items).ToString;
+
+  LimparCamposProduto;
+  LimparCamposCliente;
+
+end;
+
+procedure TFormPedido.BtnNovoPedidoClick(Sender: TObject);
+begin
+  FModoEdicao:= mpInserindo;
+  LimparCamposProduto;
+  LimparCamposCliente;
+  var Total:= 0;
+  LblTotal.Caption := 'Total: R$ ' + FormatCurr('0.00', Total);
+end;
+
+procedure TFormPedido.Button10Click(Sender: TObject);
+begin
+  var Num := StrToInt(InputBox('Cancelar', 'Número do Pedido:', '0'));
+
+  if MessageDlg('Cancelar pedido ' + Num.ToString + '?',
+       mtConfirmation,[mbYes,mbNo],0)=mrYes then
+  begin
+    Service.Cancelar(Num);
+    ShowMessage('Pedido cancelado.');
+  end;
+
+end;
+
+procedure TFormPedido.Button1Click(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TFormPedido.BtnCarregarPedidoClick(Sender: TObject);
+var
+  Num: Integer;
+begin
+  var Frm := TFormSelecionarPedido.Create(nil);
+  if Frm.ShowModal = mrOk then
+  begin
+    Num:= Frm.PedidoSelecionado;
+  end;
+
+  if (Num <= 0) then
+  begin
+    MessageDlg('Informe um número de pedido válido.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  Service.CarregarPedido(Num, QCab, QItens);
+
+  FPedido.Numero:= QCab.FieldByName('numero_pedido').AsInteger;
+  EdtCliente.Text := QCab.FieldByName('codigo_cliente').AsString;
+  EdtNomeCliente.Text := QCab.FieldByName('nome').AsString;
+  EdtCidade.Text := QCab.FieldByName('cidade').AsString;
+  EdtUF.Text := QCab.FieldByName('uf').AsString;
+
+  Items.Clear;
+  QItens.First;
+  while not QItens.Eof do
+  begin
+    var lPedidoItem := TPedidoItem.Create;
+    lPedidoItem.Id:= QItens.FieldByName('Id').AsInteger;
+    lPedidoItem.NumeroPedido:= QItens.FieldByName('numero_pedido').AsInteger;
+    lPedidoItem.CodigoProduto := QItens.FieldByName('codigo_produto').AsInteger;
+    lPedidoItem.Quantidade := QItens.FieldByName('quantidade').AsFloat;
+    lPedidoItem.ValorUnitario := QItens.FieldByName('valor_unitario').AsFloat;
+    lPedidoItem.ValorTotal := QItens.FieldByName('valor_total').AsFloat;
+    Items.Add(lPedidoItem);
+    QItens.Next;
+  end;
+
+  AtualizaGrid;
+
+end;
+
+procedure TFormPedido.EdtClienteChange(Sender: TObject);
+begin
+   BtnCarregarPedido.Visible:= (EdtCliente.Text = '');
+   btnCancelar.Visible:= (EdtCliente.Text = '');
+end;
+
+procedure TFormPedido.EdtClienteExit(Sender: TObject);
+begin
+  if Trim(EdtCliente.Text) = '' then
+    Exit;
+
+  var Codigo := StrToIntDef(EdtCliente.Text, 0);
+
+  if Codigo = 0 then
+  begin
+    ShowMessage('Código inválido.');
+    Exit;
+  end;
+
+  FClienteAtual := FClienteController.BuscarCliente(Codigo);
+
+  if Assigned(FClienteAtual) then
+  begin
+    EdtNomeCliente.Text := FClienteAtual.Nome;
+    EdtCidade.Text      := FClienteAtual.Cidade;
+    EdtUF.Text          := FClienteAtual.UF;
+    EdtProd.SetFocus;
+  end
+  else
+  begin
+    ShowMessage('Cliente não encontrado.');
+    EdtNomeCliente.Clear;
+    EdtCidade.Clear;
+    EdtUF.Clear;
+    EdtCliente.SetFocus;
+  end;
+
+end;
+
+procedure TFormPedido.EdtClienteKeyPress(Sender: TObject; var Key: Char);
+begin
+  if (Key = #13) then
+    if (Trim(EdtCliente.Text) = '') then
+      BtnSelecionarCliente.Click
+    else
+      SelectNext(ActiveOleControl, true, true);
+   PermitirApenasNumero(Key);
+end;
+
+procedure TFormPedido.EdtNomeClienteKeyPress(Sender: TObject; var Key: Char);
+begin
+  if (Key = #13) then
+    SelectNext(ActiveOleControl, true, true);
+  PermitirApenasNumero(Key);
+end;
+
+procedure TFormPedido.EdtProdExit(Sender: TObject);
+begin
+  if Trim(EdtProd.Text) = '' then
+    Exit;
+
+  var Codigo := StrToIntDef(EdtProd.Text, 0);
+
+  if Codigo = 0 then
+  begin
+    ShowMessage('Código inválido.');
+    Exit;
+  end;
+
+  FProduto := FProdutoController.BuscarProduto(Codigo);
+
+  if Assigned(FClienteAtual) then
+  begin
+    EdtNomeProd.Text := FProduto.Descricao;
+    EdtValorUnit.Text := FloatToStr(FProduto.Valor);
+    BtnAdd.Caption:='Adicionar Produto';
+    EdtQtde.SetFocus;
+  end
+  else
+  begin
+    ShowMessage('Produto não encontrado.');
+    EdtNomeProd.Clear;
+    EdtValorUnit.Clear;
+    EdtProd.SetFocus;
+  end;
+
+end;
+
+procedure TFormPedido.EdtProdKeyPress(Sender: TObject; var Key: Char);
+begin
+  if (Key = #13) then
+    if (Trim(EdtProd.Text) = '') then
+      BtnSelecionarProduto.Click
+    else
+      SelectNext(ActiveOleControl, true, true);
+end;
+
+procedure TFormPedido.EdtQtdeKeyPress(Sender: TObject; var Key: Char);
+begin
+  if (Key = #13) then
+    if (Trim(EdtProd.Text) = '') then
+      BtnAdd.Click
+    else
+      SelectNext(ActiveOleControl, true, true);
+  PermitirApenasNumero(Key);
+end;
+
+procedure TFormPedido.BtnCarregarClick(Sender: TObject);
+begin
+  var Num := StrToInt(InputBox('Carregar', 'Número do Pedido:', '0'));
+  Service.CarregarPedido(Num, QCab, QItens);
+
+  EdtCliente.Text := QCab.FieldByName('codigo_cliente').AsString;
+
+  Items.Clear;
+  QItens.First;
+  while not QItens.Eof do
+  begin
+    var lPedidoItem := TPedidoItem.Create;
+    lPedidoItem.CodigoProduto := QItens.FieldByName('codigo_produto').AsInteger;
+    lPedidoItem.Quantidade := QItens.FieldByName('quantidade').AsFloat;
+    lPedidoItem.ValorUnitario := QItens.FieldByName('valor_unitario').AsFloat;
+    lPedidoItem.ValorTotal := QItens.FieldByName('valor_total').AsFloat;
+    Items.Add(lPedidoItem);
+    QItens.Next;
+  end;
+
+  AtualizaGrid;
+
+end;
+
+procedure TFormPedido.BtnCancelarClick(Sender: TObject);
+begin
+  var Num := StrToInt(InputBox('Cancelar', 'Número do Pedido:', '0'));
+
+  if MessageDlg('Cancelar pedido ' + Num.ToString + '?',
+       mtConfirmation,[mbYes,mbNo],0)=mrYes then
+  begin
+    Service.Cancelar(Num);
+    ShowMessage('Pedido cancelado.');
+  end;
+end;
+
+procedure TFormPedido.AtualizaGrid;
+var
+  Total: Double;
+begin
+  Grid.RowCount := Items.Count + 1;
+  Total := 0;
+  var lLinha := 1;
+
+  for var lPedidoIten in Items do
+  begin
+    Grid.Cells[0,lLinha] := lPedidoIten.CodigoProduto.ToString;
+    Grid.Cells[1,lLinha] := FClienteController.BuscarCliente(StrToInt(lPedidoIten.CodigoProduto.ToString)).Nome;
+    Grid.Cells[2,lLinha] := FloatToStr(lPedidoIten.Quantidade);
+    Grid.Cells[3,lLinha] := FormatFloat('0.00', lPedidoIten.ValorUnitario);
+    Grid.Cells[4,lLinha] := FormatFloat('0.00', lPedidoIten.ValorTotal);
+    Total := Total + lPedidoIten.ValorTotal;
+    Inc(lLinha);
+  end;
+
+  LblTotal.Caption := 'Total: R$ ' + FormatCurr('0.00', Total);
+end;
+
+end.

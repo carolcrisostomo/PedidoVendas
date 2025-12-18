@@ -1,0 +1,190 @@
+unit PedidoRepository;
+
+interface
+uses FireDAC.Comp.Client, uPedido, uPedidoItem, System.Generics.Collections,
+  FireDAC.Stan.Param;
+
+type
+  IPedidoRepository = interface
+    function Salvar(P: TPedido; Itens: TObjectList<TPedidoItem>): Integer;
+    function InserirPedido(P: TPedido; Itens: TObjectList<TPedidoItem>): Integer;
+    function AtualizarPedido( P: TPedido; Itens: TObjectList<TPedidoItem>): Integer;
+    procedure CarregarPedido(Num: Integer; QCab, QItens: TFDQuery);
+    procedure Cancelar(Num: Integer);
+  end;
+
+  TPedidoRepository = class(TInterfacedObject, IPedidoRepository)
+  private
+    Conn: TFDConnection;
+  public
+    constructor Create(AConn: TFDConnection);
+    function Salvar(P: TPedido; Itens: TObjectList<TPedidoItem>): Integer;
+    function InserirPedido(P: TPedido; Itens: TObjectList<TPedidoItem>): Integer;
+    function AtualizarPedido( P: TPedido; Itens: TObjectList<TPedidoItem>): Integer;
+    procedure CarregarPedido(Num: Integer; QCab, QItens: TFDQuery);
+    procedure Cancelar(Num: Integer);
+  end;
+
+implementation
+
+constructor TPedidoRepository.Create(AConn: TFDConnection);
+begin
+  Conn := AConn;
+end;
+
+function TPedidoRepository.InserirPedido(P: TPedido; Itens: TObjectList<TPedidoItem>): Integer;
+begin
+  Conn.StartTransaction;
+
+  try
+    var QryPedido  := TFDQuery.Create(nil);
+    QryPedido .Connection := Conn;
+
+    QryPedido.SQL.Clear;
+    QryPedido.SQL.Text := 'INSERT INTO pedidos (data_emissao,codigo_cliente,valor_total) VALUES (:data_emissao,:codigo_cliente,:valor_total)';
+    QryPedido.ParamByName('data_emissao').AsDate := P.Data;
+    QryPedido.ParamByName('codigo_cliente').AsInteger := P.CodigoCliente;
+    QryPedido.ParamByName('valor_total').AsFloat := P.ValorTotal;
+    QryPedido.ExecSQL;
+
+    P.Numero := QryPedido .Connection.ExecSQLScalar('SELECT LAST_INSERT_ID()');
+
+    for var IPedidoItem in Itens do
+    begin
+      QryPedido.SQL.Clear;
+      QryPedido.SQL.Text := 'INSERT INTO pedidos_produtos (numero_pedido,codigo_produto,quantidade,valor_unitario,valor_total) ' +
+                    'VALUES (:numero_pedido,:codigo_produto,:quantidade,:valor_unitario,:valor_total)';
+      QryPedido.ParamByName('numero_pedido').AsInteger := P.Numero;
+      QryPedido.ParamByName('codigo_produto').AsInteger := IPedidoItem.CodigoProduto;
+      QryPedido.ParamByName('quantidade').AsFloat := IPedidoItem.Quantidade;
+      QryPedido.ParamByName('valor_unitario').AsFloat := IPedidoItem.ValorUnitario;
+      QryPedido.ParamByName('valor_total').AsFloat := IPedidoItem.ValorTotal;
+      QryPedido.ExecSQL;
+    end;
+
+    Conn.Commit;
+
+  except
+    Conn.Rollback;
+    raise;
+  end;
+
+  Result := P.Numero;
+end;
+
+
+function TPedidoRepository.AtualizarPedido( P: TPedido; Itens: TObjectList<TPedidoItem>): Integer;
+begin
+  Conn.StartTransaction;
+
+  try
+    var QryPedido := TFDQuery.Create(nil);
+    QryPedido.Connection := Conn;
+
+    QryPedido.SQL.Clear;
+    QryPedido.SQL.Text :=
+      'UPDATE pedidos SET ' +
+      'data_emissao = :data_emissao, ' +
+      'codigo_cliente = :codigo_cliente, ' +
+      'valor_total = :valor_total ' +
+      'WHERE numero_pedido = :numero_pedido';
+
+    QryPedido.ParamByName('numero_pedido').AsInteger := P.Numero;
+    QryPedido.ParamByName('data_emissao').AsDate := P.Data;
+    QryPedido.ParamByName('codigo_cliente').AsInteger := P.CodigoCliente;
+    QryPedido.ParamByName('valor_total').AsFloat := P.ValorTotal;
+    QryPedido.ExecSQL;
+
+    for var IPedidoItem in Itens do
+    begin
+      QryPedido.SQL.Clear;
+      QryPedido.SQL.Text :=
+        'UPDATE pedidos_produtos SET ' +
+        'codigo_produto = :codigo_produto, ' +
+        'quantidade = :quantidade, ' +
+        'valor_unitario = :valor_unitario, ' +
+        'valor_total = :valor_total ' +
+        'WHERE numero_pedido = :numero_pedido ' +
+        'AND id = :id';
+
+      QryPedido.ParamByName('numero_pedido').AsInteger := P.Numero;
+      QryPedido.ParamByName('id').AsInteger := IPedidoItem.Id;
+      QryPedido.ParamByName('codigo_produto').AsInteger := IPedidoItem.CodigoProduto;
+      QryPedido.ParamByName('quantidade').AsFloat := IPedidoItem.Quantidade;
+      QryPedido.ParamByName('valor_unitario').AsFloat := IPedidoItem.ValorUnitario;
+      QryPedido.ParamByName('valor_total').AsFloat := IPedidoItem.ValorTotal;
+      QryPedido.ExecSQL;
+    end;
+
+    Conn.Commit;
+
+  except
+    Conn.Rollback;
+    raise;
+  end;
+
+  Result := P.Numero;
+end;
+
+
+function TPedidoRepository.Salvar(P: TPedido; Itens: TObjectList<TPedidoItem>): Integer;
+begin
+  Conn.StartTransaction;
+  try
+    if P.Numero > 0 then
+      AtualizarPedido(P, Itens)
+    else
+      InserirPedido(P, Itens);
+
+    Conn.Commit;
+    Result := P.Numero;
+  except
+    Conn.Rollback;
+    raise;
+  end;
+end;
+
+
+
+procedure TPedidoRepository.CarregarPedido(Num: Integer; QCab, QItens: TFDQuery);
+begin
+  QCab.Close;
+  QCab.SQL.Clear;
+  QCab.SQL.Text :=
+    'SELECT c.*, p.* ' +
+    'FROM clientes c ' +
+    'JOIN pedidos p ON c.codigo = p.codigo_cliente '+
+    'WHERE p.numero_pedido = :numero_pedido';
+  QCab.ParamByName('numero_pedido').AsInteger := Num;
+  QCab.Open;
+
+  QItens.Close;
+  QItens.SQL.Clear;
+  QItens.SQL.Text :=
+    'SELECT pp.*, pr.descricao '+
+    'FROM pedidos_produtos pp '+
+    'JOIN produtos pr ON pr.codigo = pp.codigo_produto '+
+    'WHERE numero_pedido = :numero_pedido';
+  QItens.ParamByName('numero_pedido').AsInteger := Num;
+  QItens.Open;
+end;
+
+procedure TPedidoRepository.Cancelar(Num: Integer);
+begin
+  Conn.StartTransaction;
+  try
+    Conn.ExecSQL(
+      'DELETE FROM pedidos_produtos WHERE numero_pedido=:n', [Num]
+    );
+    Conn.ExecSQL(
+      'DELETE FROM pedidos WHERE numero_pedido=:n', [Num]
+    );
+    Conn.Commit;
+  except
+    Conn.Rollback;
+    raise;
+  end;
+
+end;
+
+end.

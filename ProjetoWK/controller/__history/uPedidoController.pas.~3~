@@ -1,0 +1,29 @@
+unit uPedidoController;
+
+interface
+
+uses
+  FireDAC.Comp.Client,uPedido,uPedidoDAO;
+
+type
+  TPedidoController=class
+  private
+    FConn:TFDConnection;
+  public
+    constructor Create(AConn:TFDConnection);
+    procedure SalvarPedido(APedido:TPedido);
+  end;
+
+implementation
+
+constructor TPedidoController.Create(AConn:TFDConnection);
+begin
+  FConn:=AConn;
+end;
+
+procedure TPedidoController.SalvarPedido(APedido:TPedido);
+begin
+  TPedidoDAO.GravarPedido(FConn,APedido);
+end;
+
+end.

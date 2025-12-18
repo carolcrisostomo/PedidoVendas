@@ -1,0 +1,115 @@
+unit FrmSelecionarPedido;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,
+  Vcl.Forms, Vcl.StdCtrls, Vcl.Grids, Vcl.Controls,
+  FireDAC.Comp.Client,
+  PedidoService, PedidoRepository,
+  Database;
+
+type
+  TFormSelecionarPedido = class(TForm)
+    EdtBuscar: TEdit;
+    Grid: TStringGrid;
+    BtnSelecionar: TButton;
+    BtnCancelar: TButton;
+    procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure EdtBuscarChange(Sender: TObject);
+    procedure BtnSelecionarClick(Sender: TObject);
+    procedure BtnCancelarClick(Sender: TObject);
+    procedure GridDblClick(Sender: TObject);
+  private
+    Conn: TFDConnection;
+    Service: TPedidoService;
+    QPedidos: TFDQuery;
+    FPedidoSelecionado: Integer;
+    procedure ConfigurarGrid;
+    procedure CarregarPedidos(const AFiltro: string = '');
+  public
+    property PedidoSelecionado: Integer read FPedidoSelecionado;
+  end;
+
+implementation
+
+{$R *.dfm}
+
+procedure TFormSelecionarPedido.FormCreate(Sender: TObject);
+begin
+  Conn := DBConnection;
+  Service := TPedidoService.Create(TPedidoRepository.Create(Conn));
+
+  QPedidos := TFDQuery.Create(nil);
+  QPedidos.Connection := Conn;
+
+  FPedidoSelecionado := 0;
+  ConfigurarGrid;
+end;
+
+procedure TFormSelecionarPedido.FormShow(Sender: TObject);
+begin
+  CarregarPedidos;
+end;
+
+procedure TFormSelecionarPedido.ConfigurarGrid;
+begin
+  Grid.ColCount := 4;
+  Grid.FixedRows := 1;
+  Grid.Cells[0,0] := 'Pedido';
+  Grid.Cells[1,0] := 'Cliente';
+  Grid.Cells[2,0] := 'Data';
+  Grid.Cells[3,0] := 'Total';
+end;
+
+procedure TFormSelecionarPedido.CarregarPedidos(const AFiltro: string);
+begin
+  QPedidos.Close;
+  QPedidos.Connection:= Conn;
+  QPedidos.SQL.Text :=
+    'select p.numero, c.nome, p.data, p.total ' +
+    'from pedido p join cliente c on c.codigo = p.codigo_cliente ' +
+   // 'where (:filtro = '''' or p.numero like :filtro) ' +
+    'order by p.numero desc';
+
+ // QPedidos.ParamByName('filtro').AsString :=IfThen(AFiltro <> '', '%' + AFiltro + '%', '');
+
+  QPedidos.Open;
+
+  Grid.RowCount := QPedidos.RecordCount + 1;
+  var i := 1;
+  while not QPedidos.Eof do
+  begin
+    Grid.Cells[0,i] := QPedidos.FieldByName('numero').AsString;
+    Grid.Cells[1,i] := QPedidos.FieldByName('nome').AsString;
+    Grid.Cells[2,i] := DateToStr(QPedidos.FieldByName('data').AsDateTime);
+    Grid.Cells[3,i] := FormatCurr('0.00', QPedidos.FieldByName('total').AsCurrency);
+    Inc(i);
+    QPedidos.Next;
+  end;
+end;
+
+procedure TFormSelecionarPedido.EdtBuscarChange(Sender: TObject);
+begin
+  CarregarPedidos(EdtBuscar.Text);
+end;
+
+procedure TFormSelecionarPedido.BtnSelecionarClick(Sender: TObject);
+begin
+  if Grid.Row <= 0 then Exit;
+  FPedidoSelecionado := StrToInt(Grid.Cells[0, Grid.Row]);
+  ModalResult := mrOk;
+end;
+
+procedure TFormSelecionarPedido.GridDblClick(Sender: TObject);
+begin
+  BtnSelecionarClick(Sender);
+end;
+
+procedure TFormSelecionarPedido.BtnCancelarClick(Sender: TObject);
+begin
+  ModalResult := mrCancel;
+end;
+
+end.

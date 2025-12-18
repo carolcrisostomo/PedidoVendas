@@ -1,0 +1,73 @@
+unit uClienteDAO;
+
+interface
+
+uses
+  FireDAC.Comp.Client, uCliente, System.Generics.Collections, FireDAC.Stan.Param;
+
+type
+  TClienteDAO = class
+  public
+    class function BuscarPorCodigo(Conn: TFDConnection; ACodigo: Integer): TCliente;
+    class function Listar(Conn: TFDConnection; const AFiltro: string): TObjectList<TCliente>;
+  end;
+
+implementation
+
+class function TClienteDAO.BuscarPorCodigo(Conn: TFDConnection; ACodigo: Integer): TCliente;
+begin
+  Result := nil;
+  var QCliente := TFDQuery.Create(nil);
+  try
+    QCliente.Connection := Conn;
+    QCliente.SQL.Text := 'SELECT CODIGO, NOME, CIDADE, UF FROM CLIENTES WHERE CODIGO = :CODIGO';
+    QCliente.ParamByName('CODIGO').AsInteger := ACodigo;
+    QCliente.Open;
+
+    if not QCliente.IsEmpty then
+    begin
+      Result := TCliente.Create;
+      Result.Codigo := QCliente.FieldByName('CODIGO').AsInteger;
+      Result.Nome := QCliente.FieldByName('NOME').AsString;
+      Result.Cidade := QCliente.FieldByName('CIDADE').AsString;
+      Result.UF := QCliente.FieldByName('UF').AsString;
+    end;
+  finally
+    QCliente.Free;
+  end;
+end;
+
+class function TClienteDAO.Listar(Conn: TFDConnection;
+  const AFiltro: string): TObjectList<TCliente>;
+begin
+  Result := TObjectList<TCliente>.Create(True);
+
+  var QCliente := TFDQuery.Create(nil);
+  try
+    QCliente.Connection := Conn;
+    QCliente.SQL.Text :=
+      'SELECT CODIGO, NOME, CIDADE, UF ' +
+      'FROM CLIENTES ' +
+      'WHERE NOME LIKE :FILTRO ' +
+      'ORDER BY NOME';
+
+    QCliente.ParamByName('FILTRO').AsString := '%' + AFiltro + '%';
+    QCliente.Open;
+
+    while not QCliente.Eof do
+    begin
+      var Cli := TCliente.Create;
+      Cli.Codigo := QCliente.FieldByName('CODIGO').AsInteger;
+      Cli.Nome   := QCliente.FieldByName('NOME').AsString;
+      Cli.Cidade := QCliente.FieldByName('CIDADE').AsString;
+      Cli.UF     := QCliente.FieldByName('UF').AsString;
+
+      Result.Add(Cli);
+      QCliente.Next;
+    end;
+  finally
+    QCliente.Free;
+  end;
+end;
+
+end.

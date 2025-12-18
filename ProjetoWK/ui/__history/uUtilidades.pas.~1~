@@ -1,0 +1,36 @@
+unit uUtilidades;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.WinXPanels, Vcl.ExtCtrls,
+  Vcl.StdCtrls, Vcl.Buttons, VCLTee.TeCanvas, Vcl.Imaging.pngimage;
+
+type
+  TUtilidades = class
+
+ public
+   procedure ArredondarComponente(Componente: TWinControl; const Radius: SmallInt);
+ end;
+
+implementation
+
+procedure TUtilidades.ArredondarComponente(Componente: TWinControl; const Radius: SmallInt);
+var
+  R : TRect;
+  Rgn : HRGN;
+begin
+  with Componente do
+  begin
+    R := ClientRect;
+    Rgn := CreateRoundRectRgn(R.Left, R.Top, R.Right, R.Bottom, Radius, Radius);
+    Perform(EM_GETRECT, 0, lParam(@R));
+    InflateRect(R, -5, -5);
+    Perform(EM_SETRECTNP, 0, lParam(@R));
+    SetWindowRgn(Handle, Rgn, True);
+    Invalidate;
+  end;
+end;
+
+end.

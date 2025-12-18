@@ -1,0 +1,122 @@
+﻿unit FrmSelecionarProduto;
+
+interface
+
+uses
+  System.SysUtils, System.Classes, Vcl.Forms, Vcl.StdCtrls, Vcl.Grids,
+  System.Generics.Collections, FireDAC.Comp.Client, uUtilidades,
+  uProduto, uProdutoController, Vcl.Controls;
+
+type
+  TFormSelecionarProduto = class(TForm)
+    EdtBuscar: TEdit;
+    Grid: TStringGrid;
+    BtnSelecionar: TButton;
+    BtnCancelar: TButton;
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure EdtBuscarChange(Sender: TObject);
+    procedure BtnSelecionarClick(Sender: TObject);
+    procedure GridDblClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure FormResize(Sender: TObject);
+  private
+    FController: TProdutoController;
+    FProdutos: TObjectList<TProduto>;
+    FProdutoSelecionado: TProduto;
+    Conn: TFDConnection;
+    FUtilidades: TUtilidades;
+    procedure ConfigurarGrid;
+    procedure AjustarColunas(Grid: TStringGrid);
+    procedure CarregarProdutos(const AFiltro: string = '');
+  public
+    property ProdutoSelecionado: TProduto read FProdutoSelecionado;
+  end;
+
+implementation
+
+{$R *.dfm}
+
+uses Conexao, FrmPedido, Database;
+
+procedure TFormSelecionarProduto.FormCreate(Sender: TObject);
+begin
+  FUtilidades:= TUtilidades.Create();
+  FUtilidades.AplicarArredondamento(self,10);
+  Conn := DBConnection;
+  FController := TProdutoController.Create(Conn);
+  FProdutos := TObjectList<TProduto>.Create(True);
+  ConfigurarGrid;
+  CarregarProdutos;
+end;
+
+procedure TFormSelecionarProduto.FormDestroy(Sender: TObject);
+begin
+  FProdutos.Free;
+  FController.Free;
+  FUtilidades.Free;
+end;
+
+procedure TFormSelecionarProduto.FormResize(Sender: TObject);
+begin
+   AjustarColunas(Grid);
+end;
+
+procedure TFormSelecionarProduto.FormShow(Sender: TObject);
+begin
+  AjustarColunas(Grid);
+end;
+
+procedure TFormSelecionarProduto.ConfigurarGrid;
+begin
+  Grid.ColCount := 3;
+  Grid.FixedRows := 1;
+  Grid.Cells[0,0] := 'Código';
+  Grid.Cells[1,0] := 'Descrição';
+  Grid.Cells[2,0] := 'Valor';
+end;
+
+procedure TFormSelecionarProduto.AjustarColunas(Grid: TStringGrid);
+var
+  LarguraDisponivel: Integer;
+begin
+  LarguraDisponivel := Grid.ClientWidth;
+
+  Grid.ColWidths[0] := 80;
+  Grid.ColWidths[2] := 100;
+  Grid.ColWidths[1] := LarguraDisponivel -
+                       Grid.ColWidths[0] -
+                       Grid.ColWidths[2];
+end;
+
+procedure TFormSelecionarProduto.CarregarProdutos(const AFiltro: string);
+begin
+  FProdutos.Clear;
+  FProdutos.AddRange(FController.Listar(AFiltro));
+  Grid.RowCount := FProdutos.Count + 1;
+  for var I := 0 to FProdutos.Count - 1 do
+  begin
+    Grid.Cells[0, I+1] := FProdutos[I].Codigo.ToString;
+    Grid.Cells[1, I+1] := FProdutos[I].Descricao;
+    Grid.Cells[2, I+1] := CurrToStr(FProdutos[I].Valor);
+  end;
+end;
+
+procedure TFormSelecionarProduto.EdtBuscarChange(Sender: TObject);
+begin
+  CarregarProdutos(EdtBuscar.Text);
+end;
+
+procedure TFormSelecionarProduto.BtnSelecionarClick(Sender: TObject);
+begin
+  if Grid.Row <= 0 then Exit;
+  FProdutoSelecionado := FProdutos[Grid.Row - 1];
+  ModalResult := mrOk;
+end;
+
+procedure TFormSelecionarProduto.GridDblClick(Sender: TObject);
+begin
+  BtnSelecionarClick(Sender);
+end;
+
+end.

@@ -1,0 +1,107 @@
+unit PedidoRepository;
+
+interface
+uses FireDAC.Comp.Client, uPedido, uPedidoItem, System.Generics.Collections;
+
+type
+  IPedidoRepository = interface
+    function Salvar(P: TPedido; Itens: TObjectList<TPedidoItem>): Integer;
+    procedure CarregarPedido(Num: Integer; QCab, QItens: TFDQuery);
+    procedure Cancelar(Num: Integer);
+  end;
+
+  TPedidoRepository = class(TInterfacedObject, IPedidoRepository)
+  private
+    Conn: TFDConnection;
+  public
+    constructor Create(AConn: TFDConnection);
+    function Salvar(P: TPedido; Itens: TObjectList<TPedidoItem>): Integer;
+    procedure CarregarPedido(Num: Integer; QCab, QItens: TFDQuery);
+    procedure Cancelar(Num: Integer);
+  end;
+
+implementation
+
+constructor TPedidoRepository.Create(AConn: TFDConnection);
+begin
+  Conn := AConn;
+end;
+
+function TPedidoRepository.Salvar(P: TPedido; Itens: TObjectList<TPedidoItem>): Integer;
+var Q: TFDQuery; I: TPedidoItem;
+begin
+  Conn.StartTransaction;
+
+  try
+    Q := TFDQuery.Create(nil);
+    Q.Connection := Conn;
+
+    Q.SQL.Text := 'INSERT INTO pedidos (data_emissao,codigo_cliente,valor_total) VALUES (CURDATE(),:c,:t)';
+    Q.ParamByName('c').AsInteger := P.CodigoCliente;
+    Q.ParamByName('t').AsFloat := P.ValorTotal;
+    Q.ExecSQL;
+
+    P.Numero := Q.Connection.ExecSQLScalar('SELECT LAST_INSERT_ID()');
+
+    for I in Itens do
+    begin
+      Q.SQL.Text := 'INSERT INTO pedidos_produtos (numero_pedido,codigo_produto,quantidade,valor_unitario,valor_total) ' +
+                    'VALUES (:p,:pr,:q,:u,:v)';
+      Q.ParamByName('p').AsInteger := P.Numero;
+      Q.ParamByName('pr').AsInteger := I.CodigoProduto;
+      Q.ParamByName('q').AsFloat := I.Quantidade;
+      Q.ParamByName('u').AsFloat := I.ValorUnitario;
+      Q.ParamByName('v').AsFloat := I.ValorTotal;
+      Q.ExecSQL;
+    end;
+
+    Conn.Commit;
+
+  except
+    Conn.Rollback;
+    raise;
+  end;
+
+  Result := P.Numero;
+end;
+
+procedure TPedidoRepository.CarregarPedido(Num: Integer; QCab, QItens: TFDQuery);
+begin
+  QCab.Close;
+  QCab.SQL.Text :=
+    'SELECT c.*, p.* ' +
+    'FROM clientes c ' +
+    'JOIN pedidos p ON c.codigo = p.codigo_cliente '+
+    'WHERE p.numero_pedido = :n';
+  QCab.ParamByName('n').AsInteger := Num;
+  QCab.Open;
+
+  QItens.Close;
+  QItens.SQL.Text :=
+    'SELECT pp.*, pr.descricao '+
+    'FROM pedidos_produtos pp '+
+    'JOIN produtos pr ON pr.codigo = pp.codigo_produto '+
+    'WHERE numero_pedido = :n';
+  QItens.ParamByName('n').AsInteger := Num;
+  QItens.Open;
+end;
+
+procedure TPedidoRepository.Cancelar(Num: Integer);
+begin
+  Conn.StartTransaction;
+  try
+    Conn.ExecSQL(
+      'DELETE FROM pedidos_produtos WHERE numero_pedido=:n', [Num]
+    );
+    Conn.ExecSQL(
+      'DELETE FROM pedidos WHERE numero_pedido=:n', [Num]
+    );
+    Conn.Commit;
+  except
+    Conn.Rollback;
+    raise;
+  end;
+
+end;
+
+end.

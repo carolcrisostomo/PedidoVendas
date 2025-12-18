@@ -1,0 +1,34 @@
+unit Conexao;
+
+interface
+uses FireDAC.Comp.Client, System.IniFiles, System.SysUtils,
+ FireDAC.Stan.Def, FireDAC.Stan.Async, FireDAC.Phys, FireDAC.Phys.MySQL,
+ FireDAC.Phys.MySQLDef, FireDAC.DApt;
+
+function CriarConexao: TFDConnection;
+
+implementation
+
+function CriarConexao: TFDConnection;
+var ini: TIniFile; arq: string;
+begin
+  arq := ExtractFilePath(ParamStr(0)) + 'config\config.ini';
+  ini := TIniFile.Create(arq);
+
+  var dllPath := ini.ReadString('MYSQL', 'DLL', '');
+  var FDPhysMySQLDriverLink1 := TFDPhysMySQLDriverLink.Create(nil);
+  FDPhysMySQLDriverLink1.VendorLib := dllPath;
+
+
+  Result := TFDConnection.Create(nil);
+  Result.LoginPrompt := False;
+  Result.Params.DriverID := 'MySQL';
+  Result.Params.UserName := ini.ReadString('MYSQL','Username','root');
+  Result.Params.Password := ini.ReadString('MYSQL','Password','');
+  Result.Params.Database := ini.ReadString('MYSQL','Database','sistema_pedidos');
+  Result.Params.Add('Server=' + ini.ReadString('MYSQL','Server','127.0.0.1'));
+  Result.Params.Add('Port=' + ini.ReadString('MYSQL','Port','3307'));
+  Result.Params.Add('CharacterSet=utf8mb4');
+end;
+
+end.

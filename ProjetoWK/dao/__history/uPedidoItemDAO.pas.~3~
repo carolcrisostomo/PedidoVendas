@@ -1,0 +1,114 @@
+unit uPedidoItemDAO;
+
+interface
+
+uses
+  FireDAC.Comp.Client, System.Generics.Collections, uPedidoItem;
+
+type
+  TPedidoItemDAO = class
+  public
+    class procedure Inserir(Conn: TFDConnection; Item: TPedidoItem);
+    class procedure Atualizar(Conn: TFDConnection; Item: TPedidoItem);
+    class procedure Excluir(Conn: TFDConnection; AutoInc: Integer);
+    class function CarregarItens(Conn: TFDConnection; NumeroPedido: Integer): TObjectList<TPedidoItem>;
+  end;
+
+implementation
+
+class procedure TPedidoItemDAO.Inserir(Conn: TFDConnection; Item: TPedidoItem);
+begin
+  var QPedidoItem := TFDQuery.Create(nil);
+  try
+    QPedidoItem.Connection := Conn;
+    QPedidoItem.SQL.Text :=
+      'INSERT INTO PEDIDOS_PRODUTOS '+
+      '(numero_pedido, codigo_produto, quantidade, valor_unitario, valor_total) '+
+      'VALUES (:NUM, :PROD, :QTD, :UNIT, :TOTAL)';
+
+    QPedidoItem.ParamByName('NUM').AsInteger := Item.NumeroPedido;
+    QPedidoItem.ParamByName('PROD').AsInteger := Item.CodigoProduto;
+    QPedidoItem.ParamByName('QTD').AsFloat := Item.Quantidade;
+    QPedidoItem.ParamByName('UNIT').AsCurrency := Item.ValorUnitario;
+    QPedidoItem.ParamByName('TOTAL').AsCurrency := Item.ValorTotal;
+    QPedidoItem.ExecSQL;
+  finally
+    QPedidoItem.Free;
+  end;
+end;
+
+class procedure TPedidoItemDAO.Atualizar(Conn: TFDConnection; Item: TPedidoItem);
+var
+  Q: TFDQuery;
+begin
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := Conn;
+    Q.SQL.Text :=
+      'UPDATE PEDIDOS_PRODUTOS SET '+
+      'QUANTIDADE = :QTD, '+
+      'valor_unitario = :UNIT, '+
+      'valor_total = :TOTAL '+
+      'WHERE id = :ID';
+
+    Q.ParamByName('ID').AsInteger := Item.AutoInc;
+    Q.ParamByName('QTD').AsFloat := Item.Quantidade;
+    Q.ParamByName('UNIT').AsCurrency := Item.ValorUnitario;
+    Q.ParamByName('TOTAL').AsCurrency := Item.ValorTotal;
+    Q.ExecSQL;
+  finally
+    Q.Free;
+  end;
+end;
+
+class procedure TPedidoItemDAO.Excluir(Conn: TFDConnection; AutoInc: Integer);
+var
+  Q: TFDQuery;
+begin
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := Conn;
+    Q.SQL.Text := 'DELETE FROM PEDIDOS_PRODUTOS WHERE ID = :ID';
+    Q.ParamByName('ID').AsInteger := AutoInc;
+    Q.ExecSQL;
+  finally
+    Q.Free;
+  end;
+end;
+
+class function TPedidoItemDAO.CarregarItens(Conn: TFDConnection; NumeroPedido: Integer): TObjectList<TPedidoItem>;
+var
+  Q: TFDQuery;
+  Item: TPedidoItem;
+begin
+  Result := TObjectList<TPedidoItem>.Create(True);
+
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := Conn;
+    Q.SQL.Text :=
+      'SELECT ID, CODIGO_PRODUTO, QUANTIDADE, valor_unitario, valor_total '+
+      'FROM PEDIDOS_PRODUTOS WHERE NUMERO_PEDIDO = :NUM';
+
+    Q.ParamByName('NUM').AsInteger := NumeroPedido;
+    Q.Open;
+
+    while not Q.Eof do
+    begin
+      Item := TPedidoItem.Create;
+      Item.AutoInc := Q.FieldByName('ID').AsInteger;
+      Item.NumeroPedido := NumeroPedido;
+      Item.CodigoProduto := Q.FieldByName('CODIGO_PRODUTO').AsInteger;
+      Item.Quantidade := Q.FieldByName('QUANTIDADE').AsFloat;
+      Item.ValorUnitario := Q.FieldByName('valor_unitario').AsCurrency;
+      Item.ValorTotal := Q.FieldByName('valor_total').AsCurrency;
+
+      Result.Add(Item);
+      Q.Next;
+    end;
+  finally
+    Q.Free;
+  end;
+end;
+
+end.

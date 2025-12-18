@@ -1,0 +1,91 @@
+unit FrmPrincipal;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.WinXPanels, Vcl.ExtCtrls,
+  Vcl.StdCtrls, Vcl.Buttons, VCLTee.TeCanvas, Vcl.Imaging.pngimage, uUtilidades,
+  System.Actions, Vcl.ActnList;
+
+type
+  TFormPrincipal = class(TForm)
+    CardPanel1: TCardPanel;
+    CardPanel2: TCardPanel;
+    CardPanel3: TCardPanel;
+    Label2: TLabel;
+    Label3: TLabel;
+    Label4: TLabel;
+    Card1: TCard;
+    Card2: TCard;
+    Label5: TLabel;
+    Card3: TCard;
+    Label6: TLabel;
+    Label7: TLabel;
+    Label8: TLabel;
+    Label9: TLabel;
+    btnPedido: TButton;
+    btnClientes: TButton;
+    btnProdutos: TButton;
+    Image1: TImage;
+    Image2: TImage;
+    Image3: TImage;
+    CardPanel4: TCardPanel;
+    Card4: TCard;
+    Image4: TImage;
+    Button1: TButton;
+    procedure FormShow(Sender: TObject);
+    procedure btnPedidoClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+  private
+    { Private declarations }
+    FUtilidades: TUtilidades;
+  public
+    { Public declarations }
+  end;
+
+var
+  FormPrincipal: TFormPrincipal;
+
+implementation
+
+{$R *.dfm}
+
+uses FrmPedido;
+
+
+
+procedure TFormPrincipal.btnPedidoClick(Sender: TObject);
+begin
+  If not Assigned(FormPedido) then
+     FormPedido:= TFormPedido.Create(nil);
+  FormPedido.ShowModal;
+end;
+
+procedure TFormPrincipal.Button1Click(Sender: TObject);
+begin
+  Application.Terminate;
+end;
+
+procedure TFormPrincipal.FormCreate(Sender: TObject);
+begin
+  FUtilidades:= TUtilidades.Create();
+end;
+
+procedure TFormPrincipal.FormShow(Sender: TObject);
+begin
+  FUtilidades.ArredondarComponente(FormPrincipal,10);
+  FUtilidades.ArredondarComponente(CardPanel1,10);
+  FUtilidades.ArredondarComponente(CardPanel2,10);
+  FUtilidades.ArredondarComponente(CardPanel3,10);
+  FUtilidades.ArredondarComponente(CardPanel4,10);
+
+
+  //FUtilidades.ArredondarComponente(btnPedido,30);
+  //FUtilidades.ArredondarComponente(btnClientes,30);
+ // FUtilidades.ArredondarComponente(btnProdutos,30);
+
+end;
+
+end.

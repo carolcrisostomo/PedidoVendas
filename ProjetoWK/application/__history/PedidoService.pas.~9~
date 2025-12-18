@@ -1,0 +1,53 @@
+unit PedidoService;
+
+interface
+uses
+  PedidoRepository, System.Generics.Collections, FireDAC.Comp.Client, uPedido,
+  uPedidoItem;
+
+type
+  TPedidoService = class
+  private
+    Repo: IPedidoRepository;
+  public
+    constructor Create(R: IPedidoRepository);
+    function CalcularTotal(Itens: TObjectList<TPedidoItem>): Currency;
+    function Gravar(P: TPedido; Itens: TObjectList<TPedidoItem>): Integer;
+    procedure CarregarPedido(Num: Integer; QCab, QItens: TFDQuery);
+    procedure Cancelar(Num: Integer);
+  end;
+
+implementation
+
+constructor TPedidoService.Create(R: IPedidoRepository);
+begin
+  Repo := R;
+end;
+
+function TPedidoService.Gravar(P: TPedido; Itens: TObjectList<TPedidoItem>): Integer;
+begin
+  P.ValorTotal := CalcularTotal(Itens);
+  Result := Repo.Salvar(P, Itens);
+end;
+
+procedure TPedidoService.CarregarPedido(Num: Integer; QCab, QItens: TFDQuery);
+begin
+  Repo.CarregarPedido(Num, QCab, QItens);
+end;
+
+function TPedidoService.CalcularTotal(
+  Itens: TObjectList<TPedidoItem>): Currency;
+var
+  Item: TPedidoItem;
+begin
+  Result := 0;
+  for Item in Itens do
+    Result := Result + Item.ValorTotal;
+end;
+
+procedure TPedidoService.Cancelar(Num: Integer);
+begin
+  Repo.Cancelar(Num);
+end;
+
+end.
