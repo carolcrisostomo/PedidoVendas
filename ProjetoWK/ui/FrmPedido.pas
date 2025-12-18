@@ -61,7 +61,7 @@ type
     procedure BtnCancelarClick(Sender: TObject);
     procedure GridKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure EdtClienteExit(Sender: TObject);
-    procedure AtualizarGrid;
+    //procedure AtualizarGrid;
     procedure CarregarItemParaCampos(Index: Integer);
     procedure AtualizarTotal;
     procedure LimparCamposCliente;
@@ -210,30 +210,29 @@ begin
 end;
 
 procedure TFormPedido.BtnAddClick(Sender: TObject);
+var
+  Item: TPedidoItem;
 begin
-  if Trim(EdtQtde.Text) = ''  then
+  if Trim(EdtQtde.Text) = '' then
   begin
-    ShowMessage('A quantidade deve ser informada!');
-    EdtQtde.SetFocus;
+    ShowMessage('A quantidade deve ser informada.');
     Exit;
   end;
 
- // FLinha := Grid.Row;
-
-  if FPedido.Numero > 0 then
+  if FModoEdicao = mpEditando  then
   begin
-    FItem := Items[FLinha - 1];
+    Item := Items[Grid.Row - 1];
   end
   else
   begin
-    Items.Add(FItem);
-    Repaint;
+    Item := TPedidoItem.Create;
+    Items.Add(Item);
   end;
 
-  FItem.CodigoProduto := StrToInt(EdtProd.Text);
-  FItem.Quantidade    := StrToFloat(EdtQtde.Text);
-  FItem.ValorUnitario := StrToFloat(EdtValorUnit.Text);
-  FItem.RecalcularTotal;
+  Item.CodigoProduto := StrToInt(EdtProd.Text);
+  Item.Quantidade := StrToFloat(EdtQtde.Text);
+  Item.ValorUnitario := StrToFloat(EdtValorUnit.Text);
+  Item.RecalcularTotal;
 
   AtualizaGrid;
   LimparCamposProduto;
@@ -262,8 +261,6 @@ begin
   FModoEdicao:= mpInserindo;
   BtnAdd.Caption:= 'Adicionar Produto';
   EdtProd.SetFocus;
-  Grid.RowCount := 1;
-  Grid.RowCount := 5;
   Repaint;
 end;
 
@@ -279,7 +276,7 @@ begin
   Key := #0;
 end;
 
-procedure TFormPedido.AtualizarGrid;
+{procedure TFormPedido.AtualizarGrid;
 begin
   Grid.RowCount := FItens.Count + 1;
 
@@ -292,7 +289,7 @@ begin
     Grid.Cells[4, i+1] := FormatFloat('0.00', FItens[i].ValorTotal);
   end;
 end;
-
+          }
 
 procedure TFormPedido.GridKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
@@ -522,7 +519,7 @@ end;
 procedure TFormPedido.EdtQtdeKeyPress(Sender: TObject; var Key: Char);
 begin
   if (Key = #13) then
-    if (Trim(EdtProd.Text) = '') then
+    if (Trim(EdtProd.Text) <> '') then
       BtnAdd.Click
     else
       SelectNext(ActiveOleControl, true, true);
@@ -567,21 +564,22 @@ end;
 
 procedure TFormPedido.AtualizaGrid;
 var
+  Linha: Integer;
   Total: Double;
 begin
   Grid.RowCount := Items.Count + 1;
   Total := 0;
-  FLinha := 1;
+  Linha := 1;
 
   for var lPedidoIten in Items do
   begin
-    Grid.Cells[0,FLinha] := lPedidoIten.CodigoProduto.ToString;
-    Grid.Cells[1,FLinha] := FClienteController.BuscarCliente(StrToInt(lPedidoIten.CodigoProduto.ToString)).Nome;
-    Grid.Cells[2,FLinha] := FloatToStr(lPedidoIten.Quantidade);
-    Grid.Cells[3,FLinha] := FormatFloat('0.00', lPedidoIten.ValorUnitario);
-    Grid.Cells[4,FLinha] := FormatFloat('0.00', lPedidoIten.ValorTotal);
+    Grid.Cells[0,Linha] := lPedidoIten.CodigoProduto.ToString;
+    Grid.Cells[1,Linha] := FClienteController.BuscarCliente(StrToInt(lPedidoIten.CodigoProduto.ToString)).Nome;
+    Grid.Cells[2,Linha] := FloatToStr(lPedidoIten.Quantidade);
+    Grid.Cells[3,Linha] := FormatFloat('0.00', lPedidoIten.ValorUnitario);
+    Grid.Cells[4,Linha] := FormatFloat('0.00', lPedidoIten.ValorTotal);
     Total := Total + lPedidoIten.ValorTotal;
-    Inc(FLinha);
+    Inc(Linha);
   end;
 
   LblTotal.Caption := 'Total: R$ ' + FormatCurr('0.00', Total);

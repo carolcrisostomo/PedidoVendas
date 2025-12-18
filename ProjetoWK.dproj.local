@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2025/12/15 18:38:05.000.384,=C:\Carol\ProjetoWK\Unit1.pas</Transaction>
+    <Transaction>2025/12/15 18:46:17.000.514,C:\Carol\ProjetoWK\ui\FrmPrincipal.dfm=C:\Carol\ProjetoWK\Unit1.dfm</Transaction>
+    <Transaction>2025/12/15 18:46:17.000.513,C:\Carol\ProjetoWK\ui\FrmPrincipal.pas=C:\Carol\ProjetoWK\Unit1.pas</Transaction>
+    <Transaction>2025/12/16 09:54:24.000.773,=C:\Carol\ProjetoWK\Unit1.pas</Transaction>
+    <Transaction>2025/12/16 09:58:27.000.275,C:\Carol\ProjetoWK\Unit1.pas=C:\Carol\ProjetoWK\ui\uUtilidades.pas</Transaction>
+    <Transaction>2025/12/16 17:38:09.000.761,=C:\Carol\ProjetoWK\ui\FrmSelecionarCliente.pas</Transaction>
+    <Transaction>2025/12/16 17:38:21.000.193,=C:\Carol\ProjetoWK\ui\FrmSelecionarProduto.pas</Transaction>
+    <Transaction>2025/12/17 11:23:56.000.296,C:\Carol\ProjetoWK\domain\Entities.pas=</Transaction>
+    <Transaction>2025/12/17 17:02:10.000.498,=C:\Carol\ProjetoWK\Unit1.pas</Transaction>
+    <Transaction>2025/12/17 17:02:36.000.125,C:\Carol\ProjetoWK\infra\Database.pas=C:\Carol\ProjetoWK\Unit1.pas</Transaction>
+    <Transaction>2025/12/17 17:30:12.000.700,C:\Carol\ProjetoWK\controller\uPedidoController.pas=</Transaction>
+    <Transaction>2025/12/17 17:31:09.000.233,C:\Carol\ProjetoWK\dao\uPedidoDAO.pas=</Transaction>
+    <Transaction>2025/12/17 20:39:33.000.795,=C:\Carol\ProjetoWK\ui\FrmSelecionarPedido.pas</Transaction>
+  </Transactions>
+</BorlandProject>
