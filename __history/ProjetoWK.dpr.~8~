@@ -1,0 +1,31 @@
+program ProjetoWK;
+
+uses
+  Vcl.Forms,
+  FrmPedido in 'ui\FrmPedido.pas' {FormPedido},
+  Conexao in 'infra\Conexao.pas',
+  PedidoService in 'application\PedidoService.pas',
+  Entities in 'domain\Entities.pas',
+  PedidoRepository in 'infra\PedidoRepository.pas',
+  uClienteController in 'controller\uClienteController.pas',
+  uClienteDAO in 'dao\uClienteDAO.pas',
+  uCliente in 'model\uCliente.pas',
+  FireDAC.Stan.Intf,
+  FireDAC.UI.Intf,
+  FireDAC.VCLUI.Wait,
+  FireDAC.Comp.UI,
+  uPedido in 'model\uPedido.pas',
+  uProduto in 'model\uProduto.pas',
+  uPedidoDAO in 'dao\uPedidoDAO.pas',
+  uProdutoDAO in 'dao\uProdutoDAO.pas',
+  uPedidoController in 'controller\uPedidoController.pas',
+  uProdutoController in 'controller\uProdutoController.pas';
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TFormPedido, FormPedido);
+  Application.Run;
+end.
