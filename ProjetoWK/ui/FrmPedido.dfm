@@ -93100,26 +93100,13 @@ object FormPedido: TFormPedido
       end
       object Label8: TLabel
         Left = 155
-        Top = 11
+        Top = 18
         Width = 142
         Height = 25
         Caption = 'Pedido de Venda'
         Font.Charset = ANSI_CHARSET
         Font.Color = 8404992
         Font.Height = -19
-        Font.Name = 'Segoe UI Semibold'
-        Font.Style = [fsBold]
-        ParentFont = False
-      end
-      object lblAndamentoPedido: TLabel
-        Left = 155
-        Top = 34
-        Width = 101
-        Height = 17
-        Caption = 'Em atendimento'
-        Font.Charset = ANSI_CHARSET
-        Font.Color = 8404992
-        Font.Height = -13
         Font.Name = 'Segoe UI Semibold'
         Font.Style = [fsBold]
         ParentFont = False

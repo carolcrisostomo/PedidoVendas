@@ -43,7 +43,6 @@ type
     Image4: TImage;
     Button1: TButton;
     Label8: TLabel;
-    lblAndamentoPedido: TLabel;
     Shape1: TShape;
     CardPanel3: TCardPanel;
     Card3: TCard;
@@ -61,7 +60,6 @@ type
     procedure BtnCancelarClick(Sender: TObject);
     procedure GridKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure EdtClienteExit(Sender: TObject);
-    //procedure AtualizarGrid;
     procedure CarregarItemParaCampos(Index: Integer);
     procedure AtualizarTotal;
     procedure LimparCamposCliente;
@@ -90,13 +88,13 @@ type
     FProdutoController: TProdutoController;
     FClienteAtual: TCliente;
     FProduto: TProduto;
-    FItens: TObjectList<TPedidoItem>;
     FPedido: TPedido;
     FItem: TPedidoItem;
     FLinha : Integer;
     FUtilidades: TUtilidades;
     FModoEdicao: TModoItemPedido;
     procedure AtualizaGrid;
+    procedure IniciarGrid;
     procedure PermitirApenasNumero(var Key: Char);
     procedure AjustarColunas(Grid: TStringGrid);
   end;
@@ -130,26 +128,23 @@ begin
   FUtilidades:= TUtilidades.Create();
   FUtilidades.AplicarArredondamento(self,10);
 
-  FItens := TObjectList<TPedidoItem>.Create(True);
-  FModoEdicao:= mpInserindo;
-  FPedido := TPedido.Create;
-  FItem:= TPedidoItem.Create;
-  FLinha := 1;
+  IniciarGrid;
 
-  Grid.ColCount := 5;
-  Grid.Cells[0,0] := 'Cod';
-  Grid.Cells[1,0] := 'Descrição';
-  Grid.Cells[2,0] := 'Qtde';
-  Grid.Cells[3,0] := 'Unit';
-  Grid.Cells[4,0] := 'Total';
-
-  var Total:= 0;
-  LblTotal.Caption := 'Total: R$ ' + FormatCurr('0.00', Total);
 end;
 
 procedure TFormPedido.FormDestroy(Sender: TObject);
 begin
-  FUtilidades.Free;
+  FreeAndNil(Items);
+  FreeAndNil(FPedido);
+  FreeAndNil(FItem);
+
+  FreeAndNil(Service);
+  FreeAndNil(FClienteController);
+  FreeAndNil(FProdutoController);
+
+  FreeAndNil(QCab);
+  FreeAndNil(QItens);
+  FreeAndNil(FUtilidades);
 end;
 
 procedure TFormPedido.FormResize(Sender: TObject);
@@ -160,6 +155,7 @@ end;
 procedure TFormPedido.FormShow(Sender: TObject);
 begin
   AjustarColunas(Grid);
+  EdtCliente.SetFocus;
 end;
 
 procedure TFormPedido.AjustarColunas(Grid: TStringGrid);
@@ -276,21 +272,6 @@ begin
   Key := #0;
 end;
 
-{procedure TFormPedido.AtualizarGrid;
-begin
-  Grid.RowCount := FItens.Count + 1;
-
-  for var i := 0 to FItens.Count - 1 do
-  begin
-    Grid.Cells[0, i+1] := FItens[i].CodigoProduto.ToString;
-    Grid.Cells[1, i+1] := EdtNomeProd.Text;
-    Grid.Cells[2, i+1] := FloatToStr(FItens[i].Quantidade);
-    Grid.Cells[3, i+1] := FormatFloat('0.00', FItens[i].ValorUnitario);
-    Grid.Cells[4, i+1] := FormatFloat('0.00', FItens[i].ValorTotal);
-  end;
-end;
-          }
-
 procedure TFormPedido.GridKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   var idx := Grid.Row - 1;
@@ -321,15 +302,45 @@ begin
 end;
 
 
+procedure TFormPedido.IniciarGrid;
+begin
+
+  FreeAndNil(Items);
+  FreeAndNil(FPedido);
+  FreeAndNil(FItem);
+
+  Items := TObjectList<TPedidoItem>.Create(True);
+  FModoEdicao:= mpInserindo;
+
+  FPedido := TPedido.Create;
+  FItem:= TPedidoItem.Create;
+  FLinha := 1;
+
+  Grid.RowCount := 1;
+  Grid.FixedRows := 0;
+
+  Grid.ColCount := 5;
+  Grid.Cells[0,0] := 'Cod';
+  Grid.Cells[1,0] := 'Descrição';
+  Grid.Cells[2,0] := 'Qtde';
+  Grid.Cells[3,0] := 'Unit';
+  Grid.Cells[4,0] := 'Total';
+
+  var Total:= 0;
+  LblTotal.Caption := 'Total: R$ ' + FormatCurr('0.00', Total);
+  QItens.Close;
+
+end;
+
 procedure TFormPedido.AtualizarTotal;
 begin
-  for var i := 0 to FItens.Count - 1 do
-    LblTotal.Caption := FormatCurr('0.00', Service.CalcularTotal(FItens));
+  for var i := 0 to Items.Count - 1 do
+    LblTotal.Caption := FormatCurr('0.00', Service.CalcularTotal(Items));
 end;
 
 procedure TFormPedido.CarregarItemParaCampos(Index: Integer);
 begin
-  var Item := FItens[Index];
+  var Item := Items[Index];
   EdtProd.Text := Item.CodigoProduto.ToString;
   EdtQtde.Text := FloatToStr(Item.Quantidade);
   EdtValorUnit.Text := FormatCurr('0.00', Item.ValorUnitario);
@@ -341,11 +352,12 @@ begin
   FPedido.CodigoCliente := StrToInt(EdtCliente.Text);
   FPedido.Data := Date;
 
-  ShowMessage('Pedido gravado: ' + Service.Gravar(FPedido, Items).ToString);
-  lblAndamentoPedido.Caption:='Pedido gravado: ' + Service.Gravar(FPedido, Items).ToString;
+  var NumeroPedido:= Service.Gravar(FPedido, Items).ToString;
+  ShowMessage('Pedido gravado com sucesso. Nº ' + NumeroPedido);
 
   LimparCamposProduto;
   LimparCamposCliente;
+  IniciarGrid;
 
 end;
 
@@ -354,8 +366,7 @@ begin
   FModoEdicao:= mpInserindo;
   LimparCamposProduto;
   LimparCamposCliente;
-  var Total:= 0;
-  LblTotal.Caption := 'Total: R$ ' + FormatCurr('0.00', Total);
+  IniciarGrid;
 end;
 
 procedure TFormPedido.Button10Click(Sender: TObject);
